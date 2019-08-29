@@ -28,6 +28,9 @@ ALTER DATABASE esmat CHARACTER SET utf8 COLLATE utf8_general_ci;
 
 ```bash
 mvn package
+
+mvn package -Dmaven.test.skip=true
+
 java -jar target/easy-notes-1.0.0.jar
 ```
 
