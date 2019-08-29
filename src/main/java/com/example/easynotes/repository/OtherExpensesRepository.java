@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 import com.example.easynotes.model.OtherExpenses;
 
 /**
+ * مصروفات اخرى
+
  * Created by rajeevkumarsingh on 27/06/17.
  */
 
@@ -22,5 +24,8 @@ public interface OtherExpensesRepository extends JpaRepository<OtherExpenses, Lo
 	
 	@Query(value = "select * from other_expenses where  day_Date >= :startDate AND day_Date <= :endDate", nativeQuery = true)
 	public List<OtherExpenses> getAllBetweenDates(@Param("startDate")Date startDate,@Param("endDate")Date endDate );
+	
+	@Query(value = "select sum(price) from other_expenses where  day_Date >= :startDate AND day_Date <= :endDate", nativeQuery = true)
+	public Long getSumBetweenDatesWithHr(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
 
 }

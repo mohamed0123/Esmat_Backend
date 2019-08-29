@@ -29,4 +29,9 @@ public interface ManufacturersOfProductFittingsRepository extends JpaRepository<
 	@Query(value = "select * from manf_of_pro_fit where human_resource_id = :hrId and  day_Date >= :startDate AND day_Date <= :endDate", nativeQuery = true)
 	public List<ManufacturersOfProductFittings> getAllBetweenDatesWithHr(@Param("startDate")Date startDate,@Param("endDate")Date endDate ,@Param("hrId")Long hrId );
 
+	
+	@Query(value = "select sum(total_Price) from manf_of_pro_fit where  day_Date >= :startDate AND day_Date <= :endDate", nativeQuery = true)
+	public Long getSumBetweenDatesWithHr(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
+
+	
 }

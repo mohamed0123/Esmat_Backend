@@ -23,4 +23,10 @@ public interface DeceasedRepository extends JpaRepository<Deceased, Long> {
 	@Query(value = "select * from deceased where  day_Date >= :startDate AND day_Date <= :endDate", nativeQuery = true)
 	public List<Deceased> getAllBetweenDates(@Param("startDate")Date startDate,@Param("endDate")Date endDate );
 
+	
+	
+	@Query(value = "select sum(price) from deceased where  day_Date >= :startDate AND day_Date <= :endDate", nativeQuery = true)
+	public Long getSumBetweenDatesWithHr(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
+
+	
 }
