@@ -20,6 +20,10 @@ public interface SalesRepository extends JpaRepository<Sales, Long> {
 	@Query(value = "select max(id) from sales where human_resource_id=?1", nativeQuery = true)
 	Long findMaxIdByHumanResource(long human_resource_id);
 
+	
+	@Query(value = "select total_price from sales where id=?1", nativeQuery = true)
+	Long findPreviousTotalPriceForHumanResource(long maxId);
+	
 	@Query(value = "select max(id) from sales where human_resource_id=?1 and id !=?2", nativeQuery = true)
 	Long findMaxIdByHumanResourceAndNotThisOne(long human_resource_id, long recordId);
 
