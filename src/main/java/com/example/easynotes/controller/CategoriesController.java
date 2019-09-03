@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,18 +44,6 @@ public class CategoriesController {
 	public Categories getById(@PathVariable(value = "id") Long noteId) {
 		return categoriesRepository.findById(noteId)
 				.orElseThrow(() -> new ResourceNotFoundException("CategoriesRepository", "id", noteId));
-	}
-
-	@PutMapping("/update/{id}")
-	public Categories update(@PathVariable(value = "id") Long noteId, @Valid @RequestBody Categories noteDetails) {
-
-		Categories note = categoriesRepository.findById(noteId)
-				.orElseThrow(() -> new ResourceNotFoundException("CategoriesRepository", "id", noteId));
-
-		note.setCategory(noteDetails.getCategory());
-
-		Categories updatedNote = categoriesRepository.save(note);
-		return updatedNote;
 	}
 
 	@DeleteMapping("/delete/{id}")

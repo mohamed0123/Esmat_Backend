@@ -20,20 +20,26 @@ public interface SalesRepository extends JpaRepository<Sales, Long> {
 	@Query(value = "select max(id) from sales where human_resource_id=?1", nativeQuery = true)
 	Long findMaxIdByHumanResource(long human_resource_id);
 
-	
 	@Query(value = "select total_price from sales where id=?1", nativeQuery = true)
 	Long findPreviousTotalPriceForHumanResource(long maxId);
 	
-	@Query(value = "select max(id) from sales where human_resource_id=?1 and id !=?2", nativeQuery = true)
-	Long findMaxIdByHumanResourceAndNotThisOne(long human_resource_id, long recordId);
-
 	List<Sales> findByHumanResources(HumanResources hr);
 
-	@Query(value = "select * from sales where human_resource_id = :hrId and  day_Date >= :startDate AND day_Date <= :endDate", nativeQuery = true)
+	@Query(value = "select * from sales where human_resource_id = :hrId and  day_Date >= :startDate AND day_Date <= :endDate  order by id", nativeQuery = true)
 	public List<Sales> getAllBetweenDatesWithHr(@Param("startDate") Date startDate, @Param("endDate") Date endDate,
 			@Param("hrId") Long hrId);
 
 	@Query(value = "select sum(total_Price) from sales where  day_Date >= :startDate AND day_Date <= :endDate", nativeQuery = true)
 	public Long getSumBetweenDatesWithHr(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
+ 
+	 
+	@Query(value = "select max(id) from sales where id < ?1 and human_resource_id = ?2", nativeQuery = true)
+	Long findMaxPreviousId(long editId , long hrId);
+ 
+	@Query(value = "select * from sales where id >= :editId and human_resource_id = :hrId order by id", nativeQuery = true)
+	public List<Sales> getListToEdit(@Param("editId") Long editId ,@Param("hrId") long hrId);
+	
+    public List<Sales> findAllByOrderByIdAsc();
+
 
 }

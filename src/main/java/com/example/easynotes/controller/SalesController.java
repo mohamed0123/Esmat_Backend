@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,7 +34,7 @@ public class SalesController {
 
 	@GetMapping("/all")
 	public List<Sales> getAll() {
-		return sales.findAll();
+		return sales.findAllByOrderByIdAsc();
 	}
 
 	@PostMapping("/previoustotalpriceforhr")
@@ -59,113 +58,99 @@ public class SalesController {
 		return sales.getAllBetweenDatesWithHr(salesObj.getStartDate(), salesObj.getEndDate(), salesObj.getHr().getId());
 	}
 
-	@PostMapping("/create")
-	public Sales create(@Valid @RequestBody Sales note) {
+	public void insertNew(Sales note) {
 
-		if (note.getId() == null) {
-			Long hrPrevMaxId = sales.findMaxIdByHumanResource(note.getHumanResources().getId());
-			// صادر السعر الكلى للمنتج = السعر فى الكميه
-			note.setPriceAllKillios(note.getPriceInKillo() * note.getQuantityInKillo());
+		Long hrPrevMaxId = sales.findMaxIdByHumanResource(note.getHumanResources().getId());
+		// صادر السعر الكلى للمنتج = السعر فى الكميه
+		note.setPriceAllKillios(note.getPriceInKillo() * note.getQuantityInKillo());
 
-			if (hrPrevMaxId != null && hrPrevMaxId > 0) {
-				Sales previousOne = sales.findById(hrPrevMaxId)
-						.orElseThrow(() -> new ResourceNotFoundException("SalesRepository", "id", hrPrevMaxId));
+		if (hrPrevMaxId != null && hrPrevMaxId > 0) {
+			Sales previousOne = sales.findById(hrPrevMaxId)
+					.orElseThrow(() -> new ResourceNotFoundException("SalesRepository", "id", hrPrevMaxId));
 
-				note.setTotalPrice(previousOne.getTotalPrice() + note.getPriceAllKillios() - note.getIncomingMoney());
+			note.setTotalPrice(previousOne.getTotalPrice() + note.getPriceAllKillios() - note.getIncomingMoney());
 
-			} else {
-				note.setTotalPrice(note.getPriceAllKillios() - note.getIncomingMoney());
-			}
 		} else {
+			note.setTotalPrice(note.getPriceAllKillios() - note.getIncomingMoney());
+		}
 
-			Long maxId = sales.findMaxIdByHumanResource(note.getHumanResources().getId());
-			Sales noteO = null;
-			if (maxId == note.getId()) {
+		sales.save(note);
+	}
 
-				noteO = sales.findById(note.getId())
-						.orElseThrow(() -> new ResourceNotFoundException("SalesRepository", "id", note.getId()));
-				Long hrPrevMaxId = sales.findMaxIdByHumanResourceAndNotThisOne(note.getHumanResources().getId(),
-						note.getId());
+	public void update(Sales note) {
 
-				noteO.setPriceInKillo(note.getPriceInKillo());
+		List<Sales> editableList = sales.getListToEdit(note.getId(), note.getHumanResources().getId());
+
+		Sales currentNote = null;
+		for (int i = 0; i < editableList.size(); i++) {
+
+			currentNote = editableList.get(i);
+
+			if (currentNote.getId() == note.getId()) {
+				Long hrPrevMaxId = sales.findMaxPreviousId(note.getId(), note.getHumanResources().getId());
+
+				currentNote.setPriceInKillo(note.getPriceInKillo());
 				// وارد الفلوس اللى دفعها
-				noteO.setIncomingMoney(note.getIncomingMoney());
-				noteO.setcategory(note.getcategory());
-				noteO.setHumanResources(note.getHumanResources());
+				currentNote.setIncomingMoney(note.getIncomingMoney());
+				currentNote.setcategory(note.getcategory());
+				currentNote.setHumanResources(note.getHumanResources());
 				// صادر السعر الكلى للمنتج = السعر فى الكميه
-				noteO.setPriceAllKillios(note.getPriceInKillo() * note.getQuantityInKillo());
+				currentNote.setPriceAllKillios(note.getPriceInKillo() * note.getQuantityInKillo());
 				// الكميه
-				noteO.setQuantityInKillo(note.getQuantityInKillo());
+				currentNote.setQuantityInKillo(note.getQuantityInKillo());
 
 				if (hrPrevMaxId != null && hrPrevMaxId > 0) {
 					Sales previousOne = sales.findById(hrPrevMaxId)
 							.orElseThrow(() -> new ResourceNotFoundException("SalesRepository", "id", hrPrevMaxId));
 					// صادر السعر الكلى للمنتج - وارد الفلوس اللى دفعها
-					noteO.setTotalPrice(
-							previousOne.getTotalPrice() + noteO.getPriceAllKillios() - noteO.getIncomingMoney());
+					currentNote.setTotalPrice(previousOne.getTotalPrice() + currentNote.getPriceAllKillios()
+							- currentNote.getIncomingMoney());
 
 				} else {
 					// صادر السعر الكلى للمنتج - وارد الفلوس اللى دفعها
-					noteO.setTotalPrice(noteO.getPriceAllKillios() - noteO.getIncomingMoney());
+					currentNote.setTotalPrice(currentNote.getPriceAllKillios() - currentNote.getIncomingMoney());
+				}
+				sales.save(currentNote);
+			} else {
+				Long hrPrevMaxId = sales.findMaxPreviousId(currentNote.getId(),
+						currentNote.getHumanResources().getId());
+
+				if (hrPrevMaxId != null && hrPrevMaxId > 0) {
+					Sales previousOne = sales.findById(hrPrevMaxId)
+							.orElseThrow(() -> new ResourceNotFoundException("SalesRepository", "id", hrPrevMaxId));
+					// صادر السعر الكلى للمنتج - وارد الفلوس اللى دفعها
+					currentNote.setTotalPrice(previousOne.getTotalPrice() + currentNote.getPriceAllKillios()
+							- currentNote.getIncomingMoney());
+
+				} else {
+					// صادر السعر الكلى للمنتج - وارد الفلوس اللى دفعها
+					currentNote.setTotalPrice(currentNote.getPriceAllKillios() - currentNote.getIncomingMoney());
 				}
 
-			} else {
+				sales.save(currentNote);
 
-				new ResourceNotFoundException("you can only edit the last record", "id", note.getId());
-				return null;
 			}
-			Sales updatedNote = sales.save(noteO);
-			return updatedNote;
 		}
-		// صادر السعر الكلى للمنتج - وارد الفلوس اللى دفعها
-		return sales.save(note);
+	}
+
+	@PostMapping("/create")
+	public Sales create(@Valid @RequestBody Sales note) {
+
+		if (note.getId() == null) {
+			insertNew(note);
+		} else {
+			update(note);
+		}
+
+		return sales.findById(note.getId())
+				.orElseThrow(() -> new ResourceNotFoundException("SalesRepository", "id", note.getId()));
 	}
 
 	@GetMapping("/getOne/{id}")
 	public Sales getById(@PathVariable(value = "id") Long noteId) {
 		return sales.findById(noteId).orElseThrow(() -> new ResourceNotFoundException("SalesRepository", "id", noteId));
 	}
-
-	@PutMapping("/update/{id}")
-	public Sales update(@PathVariable(value = "id") Long noteId, @Valid @RequestBody Sales noteDetails) {
-
-		Long maxId = sales.findMaxIdByHumanResource(noteDetails.getHumanResources().getId());
-		Sales note = null;
-		if (maxId != noteId) {
-
-			note = sales.findById(noteId)
-					.orElseThrow(() -> new ResourceNotFoundException("SalesRepository", "id", noteId));
-			Long hrPrevMaxId = sales.findMaxIdByHumanResourceAndNotThisOne(noteDetails.getHumanResources().getId(),
-					noteId);
-
-			// وارد الفلوس اللى دفعها
-			note.setIncomingMoney(noteDetails.getIncomingMoney());
-			note.setcategory(noteDetails.getcategory());
-			note.setHumanResources(noteDetails.getHumanResources());
-			// صادر السعر الكلى للمنتج = السعر فى الكميه
-			note.setPriceAllKillios(noteDetails.getPriceInKillo() * noteDetails.getQuantityInKillo());
-			// الكميه
-			note.setQuantityInKillo(noteDetails.getQuantityInKillo());
-
-			if (hrPrevMaxId != null && hrPrevMaxId > 0) {
-				Sales previousOne = sales.findById(hrPrevMaxId)
-						.orElseThrow(() -> new ResourceNotFoundException("SalesRepository", "id", hrPrevMaxId));
-				// صادر السعر الكلى للمنتج - وارد الفلوس اللى دفعها
-				note.setTotalPrice(previousOne.getTotalPrice() + note.getPriceAllKillios() - note.getIncomingMoney());
-
-			} else {
-				// صادر السعر الكلى للمنتج - وارد الفلوس اللى دفعها
-				note.setTotalPrice(note.getPriceAllKillios() - note.getIncomingMoney());
-			}
-
-		} else {
-
-			new ResourceNotFoundException("you can only edit the last record", "id", noteId);
-
-		}
-		Sales updatedNote = sales.save(note);
-		return updatedNote;
-	}
+ 
 
 	@DeleteMapping("/delete/{id}")
 	public ResponseEntity<?> delete(@PathVariable(value = "id") Long noteId) {

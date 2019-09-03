@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,7 +34,7 @@ public class PurchasesController {
 
 	@GetMapping("/all")
 	public List<Purchases> getAll() {
-		return purchases.findAll();
+		return purchases.findAllByOrderByIdAsc();
 	}
 
 	@PostMapping("/ByHR")
@@ -46,133 +45,109 @@ public class PurchasesController {
 	@PostMapping("/ByHRAndDate")
 	public List<Purchases> getAllByHrAndDate(@Valid @RequestBody PurchasesObj purchasesObj) {
 
-		return purchases.getAllBetweenDatesWithHr(
-				purchasesObj.getStartDate(), purchasesObj.getEndDate() , purchasesObj.getHr().getId());
+		return purchases.getAllBetweenDatesWithHr(purchasesObj.getStartDate(), purchasesObj.getEndDate(),
+				purchasesObj.getHr().getId());
+	}
+
+	public void insertNew(Purchases note) {
+
+		Long hrPrevMaxId = purchases.findMaxIdByHumanResource(note.getHumanResources().getId());
+		// له = السعر فى الكميه
+		note.setPriceAllKillios(note.getPriceInKillo() * note.getQuantityInKillo());
+
+		if (hrPrevMaxId != null && hrPrevMaxId > 0) {
+			Purchases previousOne = purchases.findById(hrPrevMaxId)
+					.orElseThrow(() -> new ResourceNotFoundException("PurchasesRepository", "id", hrPrevMaxId));
+
+			note.setTotalPrice(previousOne.getTotalPrice() + note.getPriceAllKillios() - note.getPayments());
+
+		} else {
+			note.setTotalPrice(note.getPriceAllKillios() - note.getPayments());
+		}
+
+		purchases.save(note);
+	}
+
+	public void update(Purchases note) {
+
+		List<Purchases> editableList = purchases.getListToEdit(note.getId(), note.getHumanResources().getId());
+
+		Purchases currentNote = null;
+		for (int i = 0; i < editableList.size(); i++) {
+
+			currentNote = editableList.get(i);
+
+			if (currentNote.getId() == note.getId()) {
+				Long hrPrevMaxId = purchases.findMaxPreviousId(note.getId(), note.getHumanResources().getId());
+
+				currentNote.setPriceInKillo(note.getPriceInKillo());
+				// مدفوعات
+				currentNote.setPayments(note.getPayments());
+				currentNote.setcategory(note.getcategory());
+				currentNote.setHumanResources(note.getHumanResources());
+				// له = السعر فى الكميه
+				currentNote.setPriceAllKillios(note.getPriceInKillo() * note.getQuantityInKillo());
+				// الكميه
+				currentNote.setQuantityInKillo(note.getQuantityInKillo());
+
+				if (hrPrevMaxId != null && hrPrevMaxId > 0) {
+					Purchases previousOne = purchases.findById(hrPrevMaxId)
+							.orElseThrow(() -> new ResourceNotFoundException("PurchasesRepository", "id", hrPrevMaxId));
+					// له - مدفوعات
+					currentNote.setTotalPrice(
+							previousOne.getTotalPrice() + currentNote.getPriceAllKillios() - currentNote.getPayments());
+
+				} else {
+					// له - مدفوعات
+					currentNote.setTotalPrice(currentNote.getPriceAllKillios() - currentNote.getPayments());
+				}
+				purchases.save(currentNote);
+			} else {
+				Long hrPrevMaxId = purchases.findMaxPreviousId(currentNote.getId(),
+						currentNote.getHumanResources().getId());
+
+				if (hrPrevMaxId != null && hrPrevMaxId > 0) {
+					Purchases previousOne = purchases.findById(hrPrevMaxId)
+							.orElseThrow(() -> new ResourceNotFoundException("PurchasesRepository", "id", hrPrevMaxId));
+					// له - مدفوعات
+					currentNote.setTotalPrice(
+							previousOne.getTotalPrice() + currentNote.getPriceAllKillios() - currentNote.getPayments());
+
+				} else {
+					// له - مدفوعات
+					currentNote.setTotalPrice(currentNote.getPriceAllKillios() - currentNote.getPayments());
+				}
+
+				purchases.save(currentNote);
+
+			}
+		}
 	}
 
 	@PostMapping("/create")
 	public Purchases create(@Valid @RequestBody Purchases note) {
 
 		if (note.getId() == null) {
-			Long hrPrevMaxId = purchases
-					.findMaxIdByHumanResource(note.getHumanResources().getId());
-			// له = السعر فى الكميه
-			note.setPriceAllKillios(note.getPriceInKillo() * note.getQuantityInKillo());
-
-			if (hrPrevMaxId != null && hrPrevMaxId > 0) {
-				Purchases previousOne = purchases
-						.findById(hrPrevMaxId)
-						.orElseThrow(() -> new ResourceNotFoundException("PurchasesRepository",
-								"id", hrPrevMaxId));
-
-				note.setTotalPrice(previousOne.getTotalPrice() + note.getPriceAllKillios() - note.getPayments());
-
-			} else {
-				note.setTotalPrice(note.getPriceAllKillios() - note.getPayments());
-			}
+			insertNew(note);
 		} else {
 
-			Long maxId = purchases
-					.findMaxIdByHumanResource(note.getHumanResources().getId());
-			Purchases noteO = null;
-			if (maxId == note.getId()) {
-
-				noteO = purchases.findById(note.getId())
-						.orElseThrow(() -> new ResourceNotFoundException("PurchasesRepository",
-								"id", note.getId()));
-				Long hrPrevMaxId = purchases
-						.findMaxIdByHumanResourceAndNotThisOne(note.getHumanResources().getId(), note.getId());
-				noteO.setPriceInKillo(note.getPriceInKillo());
-				// مدفوعات
-				noteO.setPayments(note.getPayments());
-				noteO.setcategory(note.getcategory());
-				noteO.setHumanResources(note.getHumanResources());
-				// له = السعر فى الكميه
-				noteO.setPriceAllKillios(note.getPriceInKillo() * note.getQuantityInKillo());
-				// الكميه
-				noteO.setQuantityInKillo(note.getQuantityInKillo());
-
-				if (hrPrevMaxId != null && hrPrevMaxId > 0) {
-					Purchases previousOne = purchases
-							.findById(hrPrevMaxId)
-							.orElseThrow(() -> new ResourceNotFoundException("PurchasesRepository",
-									"id", hrPrevMaxId));
-					// له - مدفوعات
-					noteO.setTotalPrice(
-							previousOne.getTotalPrice() + noteO.getPriceAllKillios() - noteO.getPayments());
-
-				} else {
-					// له - مدفوعات
-					noteO.setTotalPrice(noteO.getPriceAllKillios() - noteO.getPayments());
-				}
-
-			} else {
-
-				new ResourceNotFoundException("you can only edit the last record", "id", note.getId());
-				return null;
-			}
-			Purchases updatedNote = purchases.save(noteO);
-			return updatedNote;
+			update(note);
 		}
-		// له - مدفوعات
-		return purchases.save(note);
+
+		return purchases.findById(note.getId())
+				.orElseThrow(() -> new ResourceNotFoundException("purchases", "id", note.getId()));
 	}
 
 	@GetMapping("/getOne/{id}")
 	public Purchases getById(@PathVariable(value = "id") Long noteId) {
-		return purchases.findById(noteId).orElseThrow(
-				() -> new ResourceNotFoundException("PurchasesRepository", "id", noteId));
-	}
-
-	@PutMapping("/update/{id}")
-	public Purchases update(@PathVariable(value = "id") Long noteId,
-			@Valid @RequestBody Purchases noteDetails) {
-
-		Long maxId = purchases
-				.findMaxIdByHumanResource(noteDetails.getHumanResources().getId());
-		Purchases note = null;
-		if (maxId != noteId) {
-
-			note = purchases.findById(noteId).orElseThrow(
-					() -> new ResourceNotFoundException("PurchasesRepository", "id", noteId));
-			Long hrPrevMaxId = purchases
-					.findMaxIdByHumanResourceAndNotThisOne(noteDetails.getHumanResources().getId(), noteId);
-
-			// مدفوعات
-			note.setPayments(noteDetails.getPayments());
-			note.setcategory(noteDetails.getcategory());
-			note.setHumanResources(noteDetails.getHumanResources());
-			// له = السعر فى الكميه
-			note.setPriceAllKillios(noteDetails.getPriceInKillo() * noteDetails.getQuantityInKillo());
-			// الكميه
-			note.setQuantityInKillo(noteDetails.getQuantityInKillo());
-
-			if (hrPrevMaxId != null && hrPrevMaxId > 0) {
-				Purchases previousOne = purchases
-						.findById(hrPrevMaxId)
-						.orElseThrow(() -> new ResourceNotFoundException("PurchasesRepository",
-								"id", hrPrevMaxId));
-				// له - مدفوعات
-				note.setTotalPrice(previousOne.getTotalPrice() + note.getPriceAllKillios() - note.getPayments());
-
-			} else {
-				// له - مدفوعات
-				note.setTotalPrice(note.getPriceAllKillios() - note.getPayments());
-			}
-
-		} else {
-
-			new ResourceNotFoundException("you can only edit the last record", "id", noteId);
-
-		}
-		Purchases updatedNote = purchases.save(note);
-		return updatedNote;
+		return purchases.findById(noteId)
+				.orElseThrow(() -> new ResourceNotFoundException("PurchasesRepository", "id", noteId));
 	}
 
 	@DeleteMapping("/delete/{id}")
 	public ResponseEntity<?> delete(@PathVariable(value = "id") Long noteId) {
-		Purchases note = purchases.findById(noteId).orElseThrow(
-				() -> new ResourceNotFoundException("PurchasesRepository", "id", noteId));
+		Purchases note = purchases.findById(noteId)
+				.orElseThrow(() -> new ResourceNotFoundException("PurchasesRepository", "id", noteId));
 
 		purchases.delete(note);
 

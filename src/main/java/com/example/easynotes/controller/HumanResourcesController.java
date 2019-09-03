@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.easynotes.exception.ResourceNotFoundException;
 import com.example.easynotes.model.HumanResources;
-import com.example.easynotes.model.ManufacturersOfProductFittings;
 import com.example.easynotes.repository.HumanResourcesRepository;
 
 /**
@@ -37,13 +36,11 @@ public class HumanResourcesController {
 		return humanResourcesRepository.findAll();
 	}
 
-	
-	
 	@GetMapping("/all/{type}")
 	public List<HumanResources> getAllByType(@PathVariable(value = "type") String type) {
 		return humanResourcesRepository.findByHumanResourceType(type);
 	}
-	
+
 	@PostMapping("/create")
 	public HumanResources create(@Valid @RequestBody HumanResources note) {
 		return humanResourcesRepository.save(note);
